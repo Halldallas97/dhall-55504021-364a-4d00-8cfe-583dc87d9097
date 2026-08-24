@@ -17,7 +17,8 @@ export type Permission =
   | 'task:create'
   | 'task:update'
   | 'task:delete'
-  | 'audit:read';
+  | 'audit:read'
+  | 'role:manage';
 
 export type TaskStatus = 'new' | 'in-progress' | 'done';
 
