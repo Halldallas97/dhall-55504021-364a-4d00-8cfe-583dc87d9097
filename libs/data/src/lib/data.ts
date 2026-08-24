@@ -10,6 +10,14 @@ export type User = {
   readonly organizationId: string;
 };
 
+export type CreateUser = {
+  readonly name: string;
+  readonly email: string;
+  readonly password: string;
+  readonly organizationName?: string;
+  readonly role?: Role;
+};
+
 export type Role = 'owner' | 'admin' | 'viewer';
 
 export type Permission =

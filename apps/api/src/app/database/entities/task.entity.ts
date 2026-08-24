@@ -6,6 +6,7 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import type { Relation } from 'typeorm';
 import { OrganizationEntity } from './organization.entity';
 import { UserEntity } from './user.entity';
 
@@ -34,7 +35,7 @@ export class TaskEntity {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'organization_id' })
-  organization: OrganizationEntity;
+  organization: Relation<OrganizationEntity>;
 
   @Column({ name: 'created_by_user_id', type: 'text' })
   createdByUserId: string;
@@ -43,7 +44,7 @@ export class TaskEntity {
     onDelete: 'RESTRICT',
   })
   @JoinColumn({ name: 'created_by_user_id' })
-  createdByUser: UserEntity;
+  createdByUser: Relation<UserEntity>;
 
   @Column({ name: 'assignee_id', type: 'text', nullable: true })
   assigneeId: string | null;
@@ -53,5 +54,5 @@ export class TaskEntity {
     onDelete: 'SET NULL',
   })
   @JoinColumn({ name: 'assignee_id' })
-  assignee: UserEntity | null;
+  assignee: Relation<UserEntity> | null;
 }

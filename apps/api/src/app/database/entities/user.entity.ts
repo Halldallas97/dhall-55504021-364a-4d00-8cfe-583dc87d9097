@@ -8,6 +8,7 @@ import {
   OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import type { Relation } from 'typeorm';
 import { OrganizationEntity } from './organization.entity';
 import { TaskEntity } from './task.entity';
 
@@ -25,6 +26,9 @@ export class UserEntity {
 
   @Column({ name: 'password_hash', select: false })
   passwordHash: string;
+  //storing the salt to ensure that users with the same password have different hashes, preventing rainbow table attacks
+  @Column({ name: 'password_salt', select: false })
+  passwordSalt: string;
 
   @Column({
     type: 'simple-enum',
@@ -40,11 +44,11 @@ export class UserEntity {
     onDelete: 'RESTRICT',
   })
   @JoinColumn({ name: 'organization_id' })
-  organization: OrganizationEntity;
+  organization: Relation<OrganizationEntity>;
 
   @OneToMany(() => TaskEntity, (task) => task.createdByUser)
-  createdTasks: TaskEntity[];
+  createdTasks: Relation<TaskEntity[]>;
 
   @OneToMany(() => TaskEntity, (task) => task.assignee)
-  assignedTasks: TaskEntity[];
+  assignedTasks: Relation<TaskEntity[]>;
 }
