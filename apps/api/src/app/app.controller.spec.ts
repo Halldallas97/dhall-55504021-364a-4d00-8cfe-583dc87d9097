@@ -14,8 +14,11 @@ import {
 describe('AppController', () => {
   let app: INestApplication;
   let users: Repository<UserEntity>;
+  const originalJwtSecret = process.env.JWT_SECRET;
 
   beforeAll(async () => {
+    process.env.JWT_SECRET = 'test-jwt-secret-that-is-at-least-32-characters';
+
     const testingModule = await Test.createTestingModule({
       imports: [
         TypeOrmModule.forRoot({
@@ -40,6 +43,12 @@ describe('AppController', () => {
 
   afterAll(async () => {
     await app.close();
+
+    if (originalJwtSecret === undefined) {
+      delete process.env.JWT_SECRET;
+    } else {
+      process.env.JWT_SECRET = originalJwtSecret;
+    }
   });
 
   // create first user in the database and return 200
@@ -54,6 +63,7 @@ describe('AppController', () => {
           name: 'Dallas Hall',
           email: 'dallas.hall@turbovet.com',
           password: 'SecurePassword123!',
+          role: 'owner',
         }),
       },
     );
@@ -69,6 +79,8 @@ describe('AppController', () => {
     expect(storedUser.organizationId).toBe(
       'd9581af7-62ed-4dc2-bff8-c7bda25fe65b',
     );
+    expect(storedUser.role).toBe('viewer');
+    expect(responseBody.role).toBe('viewer');
     expect(responseBody).not.toHaveProperty('password');
     expect(responseBody).not.toHaveProperty('passwordHash');
   });
@@ -120,6 +132,85 @@ describe('AppController', () => {
 
     expect(storedUsers).toHaveLength(2);
     expect(storedUsers[0].passwordHash).not.toBe(storedUsers[1].passwordHash);
+  });
+
+  it('logs in a user and returns a signed JWT', async () => {
+    const address = app.getHttpServer().address() as AddressInfo;
+    const response = await fetch(
+      `http://127.0.0.1:${address.port}/api/user/login`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          email: 'dallas.hall@turbovet.com',
+          password: 'SecurePassword123!',
+        }),
+      },
+    );
+
+    expect(response.status).toBe(200);
+
+    const responseBody = (await response.json()) as { accessToken: string };
+    const tokenParts = responseBody.accessToken.split('.');
+    const payload = JSON.parse(
+      Buffer.from(tokenParts[1], 'base64url').toString('utf8'),
+    );
+
+    expect(tokenParts).toHaveLength(3);
+    expect(payload).toEqual(
+      expect.objectContaining({
+        email: 'dallas.hall@turbovet.com',
+        role: 'viewer',
+        organizationId: 'd9581af7-62ed-4dc2-bff8-c7bda25fe65b',
+      }),
+    );
+    expect(payload.sub).toEqual(expect.any(String));
+    expect(payload.exp - payload.iat).toBe(900);
+  });
+
+  it('returns 401 when the password is incorrect', async () => {
+    const address = app.getHttpServer().address() as AddressInfo;
+    const response = await fetch(
+      `http://127.0.0.1:${address.port}/api/user/login`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          email: 'dallas.hall@turbovet.com',
+          password: 'WrongPassword123!',
+        }),
+      },
+    );
+
+    expect(response.status).toBe(401);
+  });
+
+  it('logs out a user', async () => {
+    const address = app.getHttpServer().address() as AddressInfo;
+    const loginResponse = await fetch(
+      `http://127.0.0.1:${address.port}/api/user/login`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          email: 'dallas.hall@turbovet.com',
+          password: 'SecurePassword123!',
+        }),
+      },
+    );
+    const { accessToken } = (await loginResponse.json()) as {
+      accessToken: string;
+    };
+
+    const logoutResponse = await fetch(
+      `http://127.0.0.1:${address.port}/api/user/logout`,
+      {
+        method: 'POST',
+        headers: { authorization: `Bearer ${accessToken}` },
+      },
+    );
+
+    expect(logoutResponse.status).toBe(204);
   });
 
 });

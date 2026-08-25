@@ -1,14 +1,30 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { randomBytes, scrypt as scryptCallback } from 'node:crypto';
+import {
+  createHmac,
+  randomBytes,
+  scrypt as scryptCallback,
+  timingSafeEqual,
+} from 'node:crypto';
 import { promisify } from 'node:util';
-import { CreateUser, User } from '@dhall-55504021-364a-4d00-8cfe-583dc87d9097/data';
+import {
+  CreateUser,
+  LoginDto,
+  LoginResponse,
+  User,
+} from '@dhall-55504021-364a-4d00-8cfe-583dc87d9097/data';
 import { Repository } from 'typeorm';
 import { OrganizationEntity, UserEntity } from './database/entities';
 
 const scrypt = promisify(scryptCallback);
 const DEFAULT_ORGANIZATION_ID = 'd9581af7-62ed-4dc2-bff8-c7bda25fe65b';
 const DEFAULT_ORGANIZATION_NAME = 'Default Organization';
+const JWT_EXPIRATION_SECONDS = 15 * 60;
 
 @Injectable()
 export class AppService {
@@ -46,7 +62,7 @@ export class AppService {
         email: user.email,
         passwordHash,
         passwordSalt: salt,
-        role: user.role ?? 'viewer',
+        role: 'viewer',
         organizationId: organization.id,
       }),
     );
@@ -58,6 +74,76 @@ export class AppService {
       role: savedUser.role,
       organizationId: savedUser.organizationId,
     };
+  }
+
+  async login(credentials: LoginDto): Promise<LoginResponse> {
+    const invalidCredentials = new UnauthorizedException(
+      'Invalid email or password',
+    );
+
+    if (!credentials.email || !credentials.password) {
+      throw invalidCredentials;
+    }
+
+    const user = await this.users
+      .createQueryBuilder('user')
+      .addSelect(['user.passwordHash', 'user.passwordSalt'])
+      .where('user.email = :email', { email: credentials.email })
+      .getOne();
+
+    if (!user) {
+      throw invalidCredentials;
+    }
+
+    const suppliedPasswordHash = (await scrypt(
+      credentials.password,
+      user.passwordSalt,
+      64,
+    )) as Buffer;
+    const storedPasswordHash = Buffer.from(user.passwordHash, 'hex');
+    const passwordMatches =
+      storedPasswordHash.length === suppliedPasswordHash.length &&
+      timingSafeEqual(storedPasswordHash, suppliedPasswordHash);
+
+    if (!passwordMatches) {
+      throw invalidCredentials;
+    }
+
+    return { accessToken: this.createAccessToken(user) };
+  }
+
+  private createAccessToken(user: UserEntity): string {
+    const secret = this.getJwtSecret();
+    const issuedAt = Math.floor(Date.now() / 1000);
+    const expiresAt = issuedAt + JWT_EXPIRATION_SECONDS;
+
+    const header = Buffer.from(
+      JSON.stringify({ alg: 'HS256', typ: 'JWT' }),
+    ).toString('base64url');
+    const payload = Buffer.from(
+      JSON.stringify({
+        sub: user.id,
+        email: user.email,
+        role: user.role,
+        organizationId: user.organizationId,
+        iat: issuedAt,
+        exp: expiresAt,
+      }),
+    ).toString('base64url');
+    const signature = createHmac('sha256', secret)
+      .update(`${header}.${payload}`)
+      .digest('base64url');
+
+    return `${header}.${payload}.${signature}`;
+  }
+
+  private getJwtSecret(): string {
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      throw new InternalServerErrorException('JWT_SECRET is not configured');
+    }
+
+    return secret;
   }
 
   private async findOrCreateOrganization(

@@ -15,7 +15,6 @@ export type CreateUser = {
   readonly email: string;
   readonly password: string;
   readonly organizationName?: string;
-  readonly role?: Role;
 };
 
 export type Role = 'owner' | 'admin' | 'viewer';
@@ -49,4 +48,8 @@ export type TaskItem = {
 export type LoginDto = {
   readonly email: string;
   readonly password: string;
+};
+
+export type LoginResponse = {
+  readonly accessToken: string;
 };
