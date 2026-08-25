@@ -73,5 +73,53 @@ describe('AppController', () => {
     expect(responseBody).not.toHaveProperty('passwordHash');
   });
 
+  it('returns 400 when a user creates an account with an existing email', async () => {
+    const address = app.getHttpServer().address() as AddressInfo;
+    const response = await fetch(
+      `http://127.0.0.1:${address.port}/api/user/create`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          name: 'Another Dallas Hall',
+          email: 'dallas.hall@turbovet.com',
+          password: 'AnotherSecurePassword123!',
+        }),
+      },
+    );
+
+    expect(response.status).toBe(400);
+  });
+
+  it('creates different password hashes for users with the same password', async () => {
+    const address = app.getHttpServer().address() as AddressInfo;
+    const password = 'SharedSecurePassword123!';
+
+    const responses = await Promise.all(
+      [
+        { name: 'First User', email: 'first.user@turbovet.com' },
+        { name: 'Second User', email: 'second.user@turbovet.com' },
+      ].map((user) =>
+        fetch(`http://127.0.0.1:${address.port}/api/user/create`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ ...user, password }),
+        }),
+      ),
+    );
+
+    expect(responses.map((response) => response.status)).toEqual([200, 200]);
+
+    const storedUsers = await users
+      .createQueryBuilder('user')
+      .addSelect('user.passwordHash')
+      .where('user.email IN (:...emails)', {
+        emails: ['first.user@turbovet.com', 'second.user@turbovet.com'],
+      })
+      .getMany();
+
+    expect(storedUsers).toHaveLength(2);
+    expect(storedUsers[0].passwordHash).not.toBe(storedUsers[1].passwordHash);
+  });
 
 });
