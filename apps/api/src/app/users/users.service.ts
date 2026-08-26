@@ -97,7 +97,16 @@ export class UsersService {
       throw invalidCredentials;
     }
 
-    return { accessToken: this.authentication.createAccessToken(user) };
+    return {
+      accessToken: this.authentication.createAccessToken(user),
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        organizationId: user.organizationId,
+      },
+    };
   }
 
   async deleteUser(id: string, authorization?: string): Promise<void> {

@@ -70,4 +70,5 @@ export type UpdateTask = {
 
 export type LoginResponse = {
   readonly accessToken: string;
+  readonly user: User;
 };
