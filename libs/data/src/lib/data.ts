@@ -52,6 +52,12 @@ export type LoginDto = {
   readonly password: string;
 };
 
+export type CreateTask = {
+  readonly title: string;
+  readonly description?: string;
+  readonly userId?: string;
+};
+
 export type LoginResponse = {
   readonly accessToken: string;
 };
