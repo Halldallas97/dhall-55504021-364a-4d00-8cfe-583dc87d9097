@@ -1,0 +1,51 @@
+<main
+  class="flex min-h-[calc(100vh-5rem)] items-center justify-center bg-white px-4"
+>
+  <form
+    class="w-full max-w-md space-y-4"
+    novalidate
+    (submit)="onSubmit($event)"
+  >
+    <app-textbox
+      label="Email"
+      name="email"
+      type="email"
+      autocomplete="email"
+      placeholder="Enter your email"
+      [required]="true"
+      [(value)]="email"
+    />
+
+    <app-textbox
+      label="Password"
+      name="password"
+      type="password"
+      autocomplete="current-password"
+      placeholder="Enter your password"
+      [required]="true"
+      [(value)]="password"
+    />
+
+    <app-button
+      type="submit"
+      className="w-full"
+      [disabled]="isSubmitting()"
+    >
+      {{ isSubmitting() ? 'Submitting...' : 'Submit' }}
+    </app-button>
+
+    @if (statusMessage()) {
+      <p class="text-sm text-gray-700" role="status" aria-live="polite">
+        {{ statusMessage() }}
+      </p>
+    }
+  </form>
+</main>
+
+<app-status-modal
+  title="Login Failed"
+  [isOpen]="!!loginErrorMessage()"
+  [message]="loginErrorMessage()"
+  variant="error"
+  (closed)="closeLoginError()"
+/>
