@@ -183,4 +183,149 @@ describe('TasksController', () => {
 
     expect(response.status).toBe(401);
   });
+
+  it('lists only the signed-in viewer\'s tasks', async () => {
+    const viewer = await createUser(
+      'List Viewer',
+      'list.viewer@example.com',
+      'SecurePassword123!',
+    );
+    const otherViewer = await createUser(
+      'Other List Viewer',
+      'other.list.viewer@example.com',
+      'SecurePassword123!',
+    );
+    const accessToken = await login(
+      'list.viewer@example.com',
+      'SecurePassword123!',
+    );
+    const viewerEntity = await users.findOneByOrFail({ id: viewer.id });
+
+    await tasks.save([
+      tasks.create({
+        title: 'Visible viewer task',
+        organizationId: viewerEntity.organizationId,
+        createdByUserId: viewer.id,
+        assigneeId: viewer.id,
+      }),
+      tasks.create({
+        title: 'Hidden viewer task',
+        organizationId: viewerEntity.organizationId,
+        createdByUserId: otherViewer.id,
+        assigneeId: otherViewer.id,
+      }),
+    ]);
+
+    const response = await fetch(apiUrl('/tasks/listall'), {
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+    const responseBody = (await response.json()) as Array<{ title: string }>;
+
+    expect(response.status).toBe(200);
+    expect(responseBody.map((task) => task.title)).toContain(
+      'Visible viewer task',
+    );
+    expect(responseBody.map((task) => task.title)).not.toContain(
+      'Hidden viewer task',
+    );
+  });
+
+  it('allows an admin to list and filter organization tasks', async () => {
+    const admin = await createUser(
+      'List Admin',
+      'list.admin@example.com',
+      'SecurePassword123!',
+    );
+    const firstUser = await createUser(
+      'First Filter User',
+      'first.filter@example.com',
+      'SecurePassword123!',
+    );
+    const secondUser = await createUser(
+      'Second Filter User',
+      'second.filter@example.com',
+      'SecurePassword123!',
+    );
+    await users.update(admin.id, { role: 'admin' });
+    const accessToken = await login(
+      'list.admin@example.com',
+      'SecurePassword123!',
+    );
+    const adminEntity = await users.findOneByOrFail({ id: admin.id });
+
+    await tasks.save([
+      tasks.create({
+        title: 'First filtered task',
+        organizationId: adminEntity.organizationId,
+        createdByUserId: admin.id,
+        assigneeId: firstUser.id,
+      }),
+      tasks.create({
+        title: 'Second filtered task',
+        organizationId: adminEntity.organizationId,
+        createdByUserId: admin.id,
+        assigneeId: secondUser.id,
+      }),
+    ]);
+
+    const allResponse = await fetch(apiUrl('/tasks/listall'), {
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+    const allTasks = (await allResponse.json()) as Array<{ title: string }>;
+    expect(allResponse.status).toBe(200);
+    expect(allTasks.map((task) => task.title)).toEqual(
+      expect.arrayContaining(['First filtered task', 'Second filtered task']),
+    );
+
+    const filteredResponse = await fetch(
+      apiUrl(`/tasks/listall?userId=${firstUser.id}`),
+      { headers: { authorization: `Bearer ${accessToken}` } },
+    );
+    const filteredTasks = (await filteredResponse.json()) as Array<{
+      assigneeId: string;
+      title: string;
+    }>;
+    expect(filteredResponse.status).toBe(200);
+    expect(filteredTasks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          title: 'First filtered task',
+          assigneeId: firstUser.id,
+        }),
+      ]),
+    );
+    expect(filteredTasks.every((task) => task.assigneeId === firstUser.id)).toBe(
+      true,
+    );
+  });
+
+  it('prevents a viewer from filtering tasks by another user', async () => {
+    await createUser(
+      'Filter Viewer',
+      'filter.viewer@example.com',
+      'SecurePassword123!',
+    );
+    const otherUser = await createUser(
+      'Filter Target',
+      'filter.target@example.com',
+      'SecurePassword123!',
+    );
+    const accessToken = await login(
+      'filter.viewer@example.com',
+      'SecurePassword123!',
+    );
+
+    const response = await fetch(
+      apiUrl(`/tasks/listall?userId=${otherUser.id}`),
+      { headers: { authorization: `Bearer ${accessToken}` } },
+    );
+
+    expect(response.status).toBe(403);
+  });
+
+  it('requires a bearer token when listing tasks', async () => {
+    const response = await fetch(apiUrl('/tasks/listall'));
+
+    expect(response.status).toBe(401);
+  });
 });

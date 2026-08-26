@@ -73,4 +73,47 @@ export class TasksService {
       assigneeId: savedTask.assigneeId,
     };
   }
+
+  async listTasks(
+    authorization?: string,
+    userId?: string,
+  ): Promise<TaskItem[]> {
+    const actor = await this.authentication.authenticate(authorization);
+    if (!hasPermission(actor.role, 'task:read')) {
+      throw new ForbiddenException('You do not have permission to read tasks');
+    }
+
+    const canReadOrganizationTasks =
+      actor.role === 'admin' || actor.role === 'owner';
+
+    if (!canReadOrganizationTasks) {
+      if (userId && userId !== actor.id) {
+        throw new ForbiddenException('You cannot list tasks for this user');
+      }
+
+      return this.tasks.find({
+        where: {
+          organizationId: actor.organizationId,
+          assigneeId: actor.id,
+        },
+      });
+    }
+
+    if (userId) {
+      const target = await this.users.findOneBy({ id: userId });
+      if (!target) {
+        throw new NotFoundException('User not found');
+      }
+      if (target.organizationId !== actor.organizationId) {
+        throw new ForbiddenException('You cannot list tasks for this user');
+      }
+    }
+
+    return this.tasks.find({
+      where: {
+        organizationId: actor.organizationId,
+        ...(userId ? { assigneeId: userId } : {}),
+      },
+    });
+  }
 }

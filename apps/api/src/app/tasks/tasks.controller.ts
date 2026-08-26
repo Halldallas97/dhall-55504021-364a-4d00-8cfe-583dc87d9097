@@ -1,4 +1,4 @@
-import { Body, Controller, Headers, Post } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Post, Query } from '@nestjs/common';
 import {
   CreateTask,
   TaskItem,
@@ -15,5 +15,13 @@ export class TasksController {
     @Headers('authorization') authorization?: string,
   ): Promise<TaskItem> {
     return this.tasksService.createTask(task, authorization);
+  }
+
+  @Get('listall')
+  listTasks(
+    @Headers('authorization') authorization?: string,
+    @Query('userId') userId?: string,
+  ): Promise<TaskItem[]> {
+    return this.tasksService.listTasks(authorization, userId);
   }
 }
