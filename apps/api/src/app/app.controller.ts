@@ -1,6 +1,8 @@
 import {
   Body,
   Controller,
+  Delete,
+  Headers,
   HttpCode,
   HttpStatus,
   Post,
@@ -8,6 +10,7 @@ import {
 import { AppService } from './app.service';
 import {
   CreateUser,
+  DeleteUser,
   LoginDto,
   LoginResponse,
   User,
@@ -21,6 +24,15 @@ export class AppController {
   @HttpCode(HttpStatus.OK)
   createUser(@Body() user: CreateUser): Promise<User> {
     return this.appService.createUser(user);
+  }
+
+  @Delete('delete')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteUser(
+    @Body() user: DeleteUser,
+    @Headers('authorization') authorization?: string,
+  ): Promise<void> {
+    await this.appService.deleteUser(user.id, authorization);
   }
 
   @Post('login')

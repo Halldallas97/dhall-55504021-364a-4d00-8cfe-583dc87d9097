@@ -1,7 +1,9 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   InternalServerErrorException,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -110,6 +112,84 @@ export class AppService {
     }
 
     return { accessToken: this.createAccessToken(user) };
+  }
+
+  async deleteUser(id: string, authorization?: string): Promise<void> {
+    const actor = await this.authenticate(authorization);
+
+    if (!id) {
+      throw new BadRequestException('User id is required');
+    }
+
+    const target = await this.users.findOneBy({ id });
+
+    if (!target) {
+      throw new NotFoundException('User not found');
+    }
+
+    const isSelf = actor.id === target.id;
+    const canDeleteOrganizationUser =
+      (actor.role === 'admin' || actor.role === 'owner') &&
+      actor.organizationId === target.organizationId;
+
+    if (!isSelf && !canDeleteOrganizationUser) {
+      throw new ForbiddenException('You cannot delete this user');
+    }
+
+    await this.users.delete(target.id);
+  }
+
+  private async authenticate(authorization?: string): Promise<UserEntity> {
+    const unauthorized = new UnauthorizedException(
+      'A valid access token is required',
+    );
+    const [scheme, token, extra] = authorization?.split(' ') ?? [];
+
+    if (scheme !== 'Bearer' || !token || extra) {
+      throw unauthorized;
+    }
+
+    try {
+      const [header, payload, signature, trailingPart] = token.split('.');
+      if (!header || !payload || !signature || trailingPart) {
+        throw unauthorized;
+      }
+
+      const expectedSignature = createHmac('sha256', this.getJwtSecret())
+        .update(`${header}.${payload}`)
+        .digest();
+      const suppliedSignature = Buffer.from(signature, 'base64url');
+      const signatureMatches =
+        suppliedSignature.length === expectedSignature.length &&
+        timingSafeEqual(suppliedSignature, expectedSignature);
+
+      if (!signatureMatches) {
+        throw unauthorized;
+      }
+
+      const claims = JSON.parse(Buffer.from(payload, 'base64url').toString()) as {
+        sub?: string;
+        exp?: number;
+      };
+      const now = Math.floor(Date.now() / 1000);
+
+      if (!claims.sub || !claims.exp || claims.exp <= now) {
+        throw unauthorized;
+      }
+
+      const actor = await this.users.findOneBy({ id: claims.sub });
+      if (!actor) {
+        throw unauthorized;
+      }
+
+      return actor;
+    } catch (error) {
+      if (error instanceof InternalServerErrorException) {
+        throw error;
+      }
+
+      throw unauthorized;
+    }
   }
 
   private createAccessToken(user: UserEntity): string {

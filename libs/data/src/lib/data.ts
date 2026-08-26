@@ -17,6 +17,8 @@ export type CreateUser = {
   readonly organizationName?: string;
 };
 
+export type DeleteUser = Pick<User, 'id'>;
+
 export type Role = 'owner' | 'admin' | 'viewer';
 
 export type Permission =
