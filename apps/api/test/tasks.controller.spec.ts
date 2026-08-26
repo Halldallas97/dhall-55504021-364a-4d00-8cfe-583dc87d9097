@@ -219,13 +219,15 @@ describe('TasksController', () => {
     const response = await fetch(apiUrl('/tasks/listall'), {
       headers: { authorization: `Bearer ${accessToken}` },
     });
-    const responseBody = (await response.json()) as Array<{ title: string }>;
+    const responseBody = (await response.json()) as {
+      tasks: Array<{ title: string }>;
+    };
 
     expect(response.status).toBe(200);
-    expect(responseBody.map((task) => task.title)).toContain(
+    expect(responseBody.tasks.map((task) => task.title)).toContain(
       'Visible viewer task',
     );
-    expect(responseBody.map((task) => task.title)).not.toContain(
+    expect(responseBody.tasks.map((task) => task.title)).not.toContain(
       'Hidden viewer task',
     );
   });
@@ -271,9 +273,11 @@ describe('TasksController', () => {
     const allResponse = await fetch(apiUrl('/tasks/listall'), {
       headers: { authorization: `Bearer ${accessToken}` },
     });
-    const allTasks = (await allResponse.json()) as Array<{ title: string }>;
+    const allResponseBody = (await allResponse.json()) as {
+      tasks: Array<{ title: string }>;
+    };
     expect(allResponse.status).toBe(200);
-    expect(allTasks.map((task) => task.title)).toEqual(
+    expect(allResponseBody.tasks.map((task) => task.title)).toEqual(
       expect.arrayContaining(['First filtered task', 'Second filtered task']),
     );
 
@@ -281,12 +285,14 @@ describe('TasksController', () => {
       apiUrl(`/tasks/listall?userId=${firstUser.id}`),
       { headers: { authorization: `Bearer ${accessToken}` } },
     );
-    const filteredTasks = (await filteredResponse.json()) as Array<{
-      assigneeId: string;
-      title: string;
-    }>;
+    const filteredResponseBody = (await filteredResponse.json()) as {
+      tasks: Array<{
+        assigneeId: string;
+        title: string;
+      }>;
+    };
     expect(filteredResponse.status).toBe(200);
-    expect(filteredTasks).toEqual(
+    expect(filteredResponseBody.tasks).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           title: 'First filtered task',
@@ -294,9 +300,11 @@ describe('TasksController', () => {
         }),
       ]),
     );
-    expect(filteredTasks.every((task) => task.assigneeId === firstUser.id)).toBe(
-      true,
-    );
+    expect(
+      filteredResponseBody.tasks.every(
+        (task) => task.assigneeId === firstUser.id,
+      ),
+    ).toBe(true);
   });
 
   it('prevents a viewer from filtering tasks by another user', async () => {
@@ -325,6 +333,234 @@ describe('TasksController', () => {
 
   it('requires a bearer token when listing tasks', async () => {
     const response = await fetch(apiUrl('/tasks/listall'));
+
+    expect(response.status).toBe(401);
+  });
+
+  it('allows a viewer to move an assigned task forward', async () => {
+    const viewer = await createUser(
+      'Update Viewer',
+      'update.viewer@example.com',
+      'SecurePassword123!',
+    );
+    const accessToken = await login(
+      'update.viewer@example.com',
+      'SecurePassword123!',
+    );
+    const viewerEntity = await users.findOneByOrFail({ id: viewer.id });
+    const task = await tasks.save(
+      tasks.create({
+        title: 'Viewer update task',
+        organizationId: viewerEntity.organizationId,
+        createdByUserId: viewer.id,
+        assigneeId: viewer.id,
+      }),
+    );
+
+    const response = await fetch(apiUrl(`/tasks/${task.id}`), {
+      method: 'PUT',
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ status: 'in-progress' }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual(
+      expect.objectContaining({ id: task.id, status: 'in-progress' }),
+    );
+    await expect(tasks.findOneByOrFail({ id: task.id })).resolves.toEqual(
+      expect.objectContaining({ status: 'in-progress' }),
+    );
+  });
+
+  it('allows a viewer to edit their assigned task content', async () => {
+    const viewer = await createUser(
+      'Content Viewer',
+      'content.viewer@example.com',
+      'SecurePassword123!',
+    );
+    const accessToken = await login(
+      'content.viewer@example.com',
+      'SecurePassword123!',
+    );
+    const viewerEntity = await users.findOneByOrFail({ id: viewer.id });
+    const task = await tasks.save(
+      tasks.create({
+        title: 'Original viewer title',
+        organizationId: viewerEntity.organizationId,
+        createdByUserId: viewer.id,
+        assigneeId: viewer.id,
+      }),
+    );
+
+    const response = await fetch(apiUrl(`/tasks/${task.id}`), {
+      method: 'PUT',
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        title: 'Viewer changed title',
+        description: 'Viewer changed description',
+        status: 'done',
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual(
+      expect.objectContaining({
+        id: task.id,
+        title: 'Viewer changed title',
+        description: 'Viewer changed description',
+        status: 'done',
+      }),
+    );
+    await expect(tasks.findOneByOrFail({ id: task.id })).resolves.toEqual(
+      expect.objectContaining({
+        title: 'Viewer changed title',
+        description: 'Viewer changed description',
+        status: 'done',
+      }),
+    );
+  });
+
+  it('prevents a viewer from updating another user\'s task', async () => {
+    const viewer = await createUser(
+      'Unassigned Viewer',
+      'unassigned.viewer@example.com',
+      'SecurePassword123!',
+    );
+    const assignee = await createUser(
+      'Update Assignee',
+      'update.assignee@example.com',
+      'SecurePassword123!',
+    );
+    const accessToken = await login(
+      'unassigned.viewer@example.com',
+      'SecurePassword123!',
+    );
+    const viewerEntity = await users.findOneByOrFail({ id: viewer.id });
+    const task = await tasks.save(
+      tasks.create({
+        title: 'Another user task',
+        organizationId: viewerEntity.organizationId,
+        createdByUserId: viewer.id,
+        assigneeId: assignee.id,
+      }),
+    );
+
+    const response = await fetch(apiUrl(`/tasks/${task.id}`), {
+      method: 'PUT',
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ status: 'done' }),
+    });
+
+    expect(response.status).toBe(403);
+  });
+
+  it('allows a viewer to reopen a completed task', async () => {
+    const viewer = await createUser(
+      'Transition Viewer',
+      'transition.viewer@example.com',
+      'SecurePassword123!',
+    );
+    const accessToken = await login(
+      'transition.viewer@example.com',
+      'SecurePassword123!',
+    );
+    const viewerEntity = await users.findOneByOrFail({ id: viewer.id });
+    const task = await tasks.save(
+      tasks.create({
+        title: 'Completed viewer task',
+        status: 'done',
+        organizationId: viewerEntity.organizationId,
+        createdByUserId: viewer.id,
+        assigneeId: viewer.id,
+      }),
+    );
+
+    const response = await fetch(apiUrl(`/tasks/${task.id}`), {
+      method: 'PUT',
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ status: 'in-progress' }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual(
+      expect.objectContaining({ id: task.id, status: 'in-progress' }),
+    );
+    await expect(tasks.findOneByOrFail({ id: task.id })).resolves.toEqual(
+      expect.objectContaining({ status: 'in-progress' }),
+    );
+  });
+
+  it('allows an owner to edit any organization task', async () => {
+    const owner = await createUser(
+      'Update Owner',
+      'update.owner@example.com',
+      'SecurePassword123!',
+    );
+    const assignee = await createUser(
+      'Owner Update Target',
+      'owner.update.target@example.com',
+      'SecurePassword123!',
+    );
+    await users.update(owner.id, { role: 'owner' });
+    const accessToken = await login(
+      'update.owner@example.com',
+      'SecurePassword123!',
+    );
+    const ownerEntity = await users.findOneByOrFail({ id: owner.id });
+    const task = await tasks.save(
+      tasks.create({
+        title: 'Owner editable task',
+        organizationId: ownerEntity.organizationId,
+        createdByUserId: assignee.id,
+        assigneeId: assignee.id,
+      }),
+    );
+
+    const response = await fetch(apiUrl(`/tasks/${task.id}`), {
+      method: 'PUT',
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        title: 'Owner updated task',
+        description: 'Updated by owner',
+        status: 'done',
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual(
+      expect.objectContaining({
+        id: task.id,
+        title: 'Owner updated task',
+        description: 'Updated by owner',
+        status: 'done',
+      }),
+    );
+  });
+
+  it('requires a bearer token when updating a task', async () => {
+    const response = await fetch(
+      apiUrl('/tasks/00000000-0000-0000-0000-000000000000'),
+      {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ status: 'done' }),
+      },
+    );
 
     expect(response.status).toBe(401);
   });

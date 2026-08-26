@@ -25,7 +25,7 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = {
     'task:delete',
     'audit:read',
   ],
-  viewer: ['task:read', 'task:create'],
+  viewer: ['task:read', 'task:create', 'task:update'],
 };
 
 export function hasPermission(role: Role, permission: Permission): boolean {

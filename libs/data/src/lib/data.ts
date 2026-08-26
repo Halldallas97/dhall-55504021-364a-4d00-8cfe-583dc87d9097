@@ -47,6 +47,10 @@ export type TaskItem = {
   readonly assigneeId: string | null;
 };
 
+export type TaskListResponse = {
+  readonly tasks: TaskItem[];
+};
+
 export type LoginDto = {
   readonly email: string;
   readonly password: string;
@@ -56,6 +60,12 @@ export type CreateTask = {
   readonly title: string;
   readonly description?: string;
   readonly userId?: string;
+};
+
+export type UpdateTask = {
+  readonly title?: string;
+  readonly description?: string;
+  readonly status?: TaskStatus;
 };
 
 export type LoginResponse = {
