@@ -39,6 +39,17 @@
         {{ statusMessage() }}
       </p>
     }
+
+    <p class="text-center text-sm text-gray-700">
+      Need an account?
+      <button
+        type="button"
+        class="text-cyan-700 hover:underline"
+        (click)="openCreateAccount()"
+      >
+        Create account
+      </button>
+    </p>
   </form>
 </main>
 
@@ -48,4 +59,9 @@
   [message]="loginErrorMessage()"
   variant="error"
   (closed)="closeLoginError()"
+/>
+
+<app-create-account-modal
+  [isOpen]="isCreateAccountOpen()"
+  (closed)="closeCreateAccount()"
 />

@@ -5,11 +5,12 @@ import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../../auth/auth.service';
 import { Button } from '../../components/button';
 import { Textbox } from '../../components/textbox';
+import { CreateAccountModal } from '../../modal/create-account-modal';
 import { StatusModal } from '../../modal/status-modal';
 import { UserService } from '../../userservice/user.service';
 
 @Component({
-  imports: [Button, StatusModal, Textbox],
+  imports: [Button, CreateAccountModal, StatusModal, Textbox],
   templateUrl: './login.html',
 })
 export class LoginPage {
@@ -21,6 +22,7 @@ export class LoginPage {
   protected password = '';
   protected readonly statusMessage = signal('');
   protected readonly loginErrorMessage = signal('');
+  protected readonly isCreateAccountOpen = signal(false);
   protected readonly isSubmitting = signal(false);
 
   protected async onSubmit(event: SubmitEvent): Promise<void> {
@@ -63,6 +65,14 @@ export class LoginPage {
 
   protected closeLoginError(): void {
     this.loginErrorMessage.set('');
+  }
+
+  protected openCreateAccount(): void {
+    this.isCreateAccountOpen.set(true);
+  }
+
+  protected closeCreateAccount(): void {
+    this.isCreateAccountOpen.set(false);
   }
 
   private isValidEmail(email: string): boolean {
