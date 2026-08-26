@@ -17,6 +17,7 @@ import {
       synchronize: process.env.NODE_ENV !== 'production',
       logging: process.env.DATABASE_LOGGING === 'true',
     }),
+    TypeOrmModule.forFeature([OrganizationEntity, UserEntity]),
   ],
   controllers: [AppController],
   providers: [AppService],

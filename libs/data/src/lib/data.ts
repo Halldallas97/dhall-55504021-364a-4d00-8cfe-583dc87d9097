@@ -10,6 +10,15 @@ export type User = {
   readonly organizationId: string;
 };
 
+export type CreateUser = {
+  readonly name: string;
+  readonly email: string;
+  readonly password: string;
+  readonly organizationName?: string;
+};
+
+export type DeleteUser = Pick<User, 'id'>;
+
 export type Role = 'owner' | 'admin' | 'viewer';
 
 export type Permission =
@@ -41,4 +50,8 @@ export type TaskItem = {
 export type LoginDto = {
   readonly email: string;
   readonly password: string;
+};
+
+export type LoginResponse = {
+  readonly accessToken: string;
 };
