@@ -1,7 +1,10 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
+import { AuthenticationService } from './auth/authentication.service';
+import { TasksController } from './tasks/tasks.controller';
+import { TasksService } from './tasks/tasks.service';
+import { UsersController } from './users/users.controller';
+import { UsersService } from './users/users.service';
 import {
   OrganizationEntity,
   TaskEntity,
@@ -17,9 +20,9 @@ import {
       synchronize: process.env.NODE_ENV !== 'production',
       logging: process.env.DATABASE_LOGGING === 'true',
     }),
-    TypeOrmModule.forFeature([OrganizationEntity, UserEntity]),
+    TypeOrmModule.forFeature([OrganizationEntity, UserEntity, TaskEntity]),
   ],
-  controllers: [AppController],
-  providers: [AppService],
+  controllers: [UsersController, TasksController],
+  providers: [AuthenticationService, UsersService, TasksService],
 })
 export class AppModule {}

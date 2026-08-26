@@ -20,6 +20,8 @@ module.exports = {
   moduleNameMapper: {
     '^@dhall-55504021-364a-4d00-8cfe-583dc87d9097/data$':
       '<rootDir>/../../libs/data/src/index.ts',
+    '^@dhall-55504021-364a-4d00-8cfe-583dc87d9097/auth$':
+      '<rootDir>/../../libs/auth/src/index.ts',
   },
   moduleFileExtensions: ['ts', 'js'],
   coverageDirectory: '../../coverage/api',

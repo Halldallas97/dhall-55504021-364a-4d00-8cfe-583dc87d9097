@@ -3,15 +3,16 @@ import { Test } from '@nestjs/testing';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AddressInfo } from 'node:net';
 import { DataSource, Repository } from 'typeorm';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
+import { AuthenticationService } from '../src/app/auth/authentication.service';
+import { UsersController } from '../src/app/users/users.controller';
+import { UsersService } from '../src/app/users/users.service';
 import {
   OrganizationEntity,
   TaskEntity,
   UserEntity,
-} from './database/entities';
+} from '../src/app/database/entities';
 
-describe('AppController', () => {
+describe('UsersController', () => {
   let app: INestApplication;
   let users: Repository<UserEntity>;
   const originalJwtSecret = process.env.JWT_SECRET;
@@ -30,8 +31,8 @@ describe('AppController', () => {
         }),
         TypeOrmModule.forFeature([OrganizationEntity, UserEntity]),
       ],
-      controllers: [AppController],
-      providers: [AppService],
+      controllers: [UsersController],
+      providers: [AuthenticationService, UsersService],
     }).compile();
 
     app = testingModule.createNestApplication();

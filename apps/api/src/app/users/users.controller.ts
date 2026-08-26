@@ -7,7 +7,6 @@ import {
   HttpStatus,
   Post,
 } from '@nestjs/common';
-import { AppService } from './app.service';
 import {
   CreateUser,
   DeleteUser,
@@ -15,15 +14,16 @@ import {
   LoginResponse,
   User,
 } from '@dhall-55504021-364a-4d00-8cfe-583dc87d9097/data';
+import { UsersService } from './users.service';
 
 @Controller('user')
-export class AppController {
-  constructor(private readonly appService: AppService) {}
+export class UsersController {
+  constructor(private readonly usersService: UsersService) {}
 
   @Post('create')
   @HttpCode(HttpStatus.OK)
   createUser(@Body() user: CreateUser): Promise<User> {
-    return this.appService.createUser(user);
+    return this.usersService.createUser(user);
   }
 
   @Delete('delete')
@@ -32,13 +32,13 @@ export class AppController {
     @Body() user: DeleteUser,
     @Headers('authorization') authorization?: string,
   ): Promise<void> {
-    await this.appService.deleteUser(user.id, authorization);
+    await this.usersService.deleteUser(user.id, authorization);
   }
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
   login(@Body() credentials: LoginDto): Promise<LoginResponse> {
-    return this.appService.login(credentials);
+    return this.usersService.login(credentials);
   }
 
   @Post('logout')
