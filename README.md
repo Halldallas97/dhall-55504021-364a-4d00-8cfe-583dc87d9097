@@ -1,91 +1,78 @@
-# Dhall55504021364a4d008cfe583dc87d9097
+# TurboVets Assessment
 
-<a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>
+This repository is an nx monorepo containing:
 
-✨ Your new, shiny [Nx workspace](https://nx.dev) is ready ✨.
+- `dashboard` — Angular web application
+- `api` — NestJS REST API
+- `auth` and `data` — shared libraries
+- `task-management.sqlite` — the default local SQLite database
 
-[Learn more about this workspace setup and its capabilities](https://nx.dev/nx-api/js?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects) or run `npx nx graph` to visually explore what was created. Now, let's get you up to speed!
+## Prerequisites
 
-## Generate a library
+Install the following before starting:
 
-```sh
-npx nx g @nx/js:lib packages/pkg1 --publishable --importPath=@my-org/pkg1
+- [Node.js](https://nodejs.org/) 22.12 or newer
+- npm (included with Node.js)
+- Git
+
+Confirm that Node.js and npm are available:
+
+```bash
+node --version
+npm --version
 ```
 
-## Run tasks
+## Run the project locally
 
-To build the library use:
+### 1. Clone the repository
 
-```sh
-npx nx build pkg1
+
+If you already have the repository open, change to its root directory—the directory containing `package.json`.
+
+### 2. Install dependencies
+
+```bash
+npm ci
 ```
 
-To run any task with Nx use:
 
-```sh
-npx nx <target> <project-name>
+### 3. Configure the API secret
+
+The API needs `JWT_SECRET` to create and validate login tokens. Use a long, random value for local development.
+
+Environment variables set this way apply only to the current terminal session.
+
+### 4. Start the API
+
+In the same terminal where `JWT_SECRET` was set, run:
+
+```bash
+npx nx serve api
 ```
 
-These targets are either [inferred automatically](https://nx.dev/concepts/inferred-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or defined in the `project.json` or `package.json` files.
+The API starts at `http://localhost:3000/api` and uses `task-management.sqlite` in the repository root by default. Keep this terminal running.
 
-[More about running tasks in the docs &raquo;](https://nx.dev/features/run-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+### 5. Start the dashboard
 
-## Versioning and releasing
+Open a second terminal in the repository root and run:
 
-To version and release the library use
-
-```
-npx nx release
+```bash
+npx nx serve dashboard
 ```
 
-Pass `--dry-run` to see what would happen without actually releasing the library.
+The terminal will print the dashboard URL, normally `http://localhost:4200`. Open it in a browser. Requests beginning with `/api` are proxied to the API on port `3000`.
 
-[Learn more about Nx release &raquo;](https://nx.dev/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+### 6. Stop the project
 
-## Set up CI!
+Press `Ctrl+C` in both running terminals.
 
-### Step 1
 
-To connect to Nx Cloud, run the following command:
+## Tests and quality checks
 
-```sh
-npx nx connect
+Run API unit tests:
+
+```bash
+npx nx test api
 ```
 
-Connecting to Nx Cloud ensures a [fast and scalable CI](https://nx.dev/ci/intro/why-nx-cloud?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) pipeline. It includes features such as:
 
-- [Remote caching](https://nx.dev/ci/features/remote-cache?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task distribution across multiple machines](https://nx.dev/ci/features/distribute-task-execution?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Automated e2e test splitting](https://nx.dev/ci/features/split-e2e-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task flakiness detection and rerunning](https://nx.dev/ci/features/flaky-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-### Step 2
-
-Use the following command to configure a CI workflow for your workspace:
-
-```sh
-npx nx g ci-workflow
-```
-
-[Learn more about Nx on CI](https://nx.dev/ci/intro/ci-with-nx#ready-get-started-with-your-provider?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Install Nx Console
-
-Nx Console is an editor extension that enriches your developer experience. It lets you run tasks, generate code, and improves code autocompletion in your IDE. It is available for VSCode and IntelliJ.
-
-[Install Nx Console &raquo;](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Useful links
-
-Learn more:
-
-- [Learn more about this workspace setup](https://nx.dev/nx-api/js?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects)
-- [Learn about Nx on CI](https://nx.dev/ci/intro/ci-with-nx?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Releasing Packages with Nx release](https://nx.dev/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [What are Nx plugins?](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-And join the Nx community:
-- [Discord](https://go.nx.dev/community)
-- [Follow us on X](https://twitter.com/nxdevtools) or [LinkedIn](https://www.linkedin.com/company/nrwl)
-- [Our Youtube channel](https://www.youtube.com/@nxdevtools)
-- [Our blog](https://nx.dev/blog?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
